@@ -19,7 +19,7 @@ bot.onText(/\/echo (.+)/, (msg, match) => {
   // 'match' is the result of executing the regexp above on the text content
   // of the message
 
-  const chatId = msg.chat.id; 
+  const chatId = msg.chat.id;
   const resp = match[1]; // the captured "whatever"
 
   // send back the matched "whatever" to the chat
@@ -42,6 +42,10 @@ bot.onText(/^\s*(\-?\d+)\s(.+)?/, async (msg, [,amount, description]) => {
     bot.sendMessage(chatId, `An error ocurred \`${e}\``);
   }
 });
+
+bot.on('edited_message', (message) => {
+  console.log(message);
+})
 
 bot.on('polling_error', (error) => {
   console.error(error);  // => 'EFATAL'
