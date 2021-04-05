@@ -37,7 +37,7 @@ bot.onText(/^\s*\$?\s*(\-?[\d\,]+\.?\d*)\s(.+)/, async (msg, [,amount, descripti
   try{
     const total = await expenses.add({
       username: id,
-      amount,
+      amount: (+amount.replace(/[$,]/g, '')).toFixed(2),
       description
     });
     // send back the matched "whatever" to the chat
