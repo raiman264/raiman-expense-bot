@@ -26,12 +26,17 @@ bot.onText(/\/echo (.+)/, (msg, match) => {
   bot.sendMessage(chatId, resp);
 });
 
-bot.onText(/^\s*(\-?\d+)\s(.+)?/, async (msg, [,amount, description]) => {
-  const {chat: {id: chatId}, from: { username }} = msg;
+bot.onText(/\/(start|info)/, (msg) => {
+  const { chat: { id: chatId }, from } = msg;
+  bot.sendMessage(chatId, `Welcome ${from.first_name}(${from.id})`);
+});
+
+bot.onText(/^\s*\$?\s*(\-?[\d\,]+\.?\d*)\s(.+)/, async (msg, [,amount, description]) => {
+  const {chat: {id: chatId}, from: { id }} = msg;
 
   try{
     const total = await expenses.add({
-      username,
+      username: id,
       amount,
       description
     });
