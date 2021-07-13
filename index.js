@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { BOT_TOKEN } = process.env;
+const { BOT_TOKEN, DEBUG_ON } = process.env;
 
 if(!BOT_TOKEN) {
   console.log(process.env);
@@ -117,12 +117,17 @@ bot.onText(/\/lists/i, async (msg) => {
   }, 3600);
 });
 
-bot.onText(/^\s*\$?\s*(\-?[\d\,]+\.?\d*)\s(.+)/, async (msg, [,amount, description]) => {
+bot.onText(/^\s*([^\$\-\d]+\s)?\$?\s*(\-?[\d\,]+\.?\d*)\s(.+)/, async (msg, [,list, amount, description]) => {
   const {chat: {id: chatId}, from, from: { id }} = msg;
 
 
   try{
-    const list_id = await expenses.getList(from);
+    const list_id = await expenses.getList(from, list);
+
+    if(!list_id) {
+      return bot.sendMessage(chatId, `list *${list}* not found`, {parse_mode: 'MarkdownV2'});
+    }
+
     const total = await expenses.add({
       list_id,
       amount: (+amount.replace(/[$,]/g, '')).toFixed(2),
@@ -136,13 +141,15 @@ bot.onText(/^\s*\$?\s*(\-?[\d\,]+\.?\d*)\s(.+)/, async (msg, [,amount, descripti
   }
 });
 
-bot.on('message', (message) => {
-  console.log('onmessage', message);
-})
+if(DEBUG_ON) {
+  bot.on('message', (message) => {
+    console.log('onmessage', message);
+  })
 
-bot.on('edited_message', (message) => {
-  console.log(message);
-})
+  bot.on('edited_message', (message) => {
+    console.log(message);
+  })
+}
 
 bot.on('polling_error', (error) => {
   console.error(error);  // => 'EFATAL'
