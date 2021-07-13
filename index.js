@@ -13,6 +13,24 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 const expenses = new Expenses();
 
+bot.setMyCommands([
+  {
+    command: 'createlist',
+    description: 'Create a new expenses list'
+  },
+  {
+    command: 'lists',
+    description: 'Show all your expenses lists'
+  },
+  {
+    command: 'ping',
+    description: 'Proof of life test'
+  }
+])
+
+bot.onText(/\/ping/, ({chat: {id: chatId}}) => {
+  bot.sendMessage(chatId, 'pong');
+});
 
 bot.onText(/\/echo (.+)/, (msg, match) => {
   // 'msg' is the received Message from Telegram
@@ -29,6 +47,74 @@ bot.onText(/\/echo (.+)/, (msg, match) => {
 bot.onText(/\/(start|info)/, (msg) => {
   const { chat: { id: chatId }, from } = msg;
   bot.sendMessage(chatId, `Welcome ${from.first_name}(${from.id})`);
+});
+
+bot.onText(/\/createlist/i, async (msg) => {
+  let timeoutId;
+  const { message_id, chat: { id: chatId }, from } = msg;
+  const question = await bot.sendMessage(
+    chatId,
+    'what is the name of your new list?',
+    {
+      reply_to_message_id: message_id,
+      reply_markup:
+        {
+          force_reply: true,
+          input_field_placeholder: 'ex: savings'
+        }
+    }
+  );
+
+
+  const replyId = bot.onReplyToMessage(chatId, question.message_id, (msg) => {
+    expenses.createList(msg.from.id, msg.text);
+    bot.sendMessage(
+      msg.chat.id,
+      `List \`${msg.text}\` created`,
+      {
+        reply_to_message_id: msg.message_id,
+        parse_mode: 'MarkdownV2'
+      }
+    )
+    clearTimeout(timeoutId)
+  });
+
+  timeoutId = setTimeout(() => {
+    bot.removeReplyListener(replyId)
+  }, 3600);
+});
+
+bot.onText(/\/lists/i, async (msg) => {
+  const { message_id, chat: { id: chatId }, from } = msg;
+  const lists = await expenses.getLists(from.id);
+  let responseText = !lists.length ? "You have no expenses lists yet" : '';
+
+  lists.forEach((list) => {
+    responseText += `${list.name} ${list.is_default_list ? '\u2713' : ''}\n`;
+  })
+
+  bot.sendMessage(
+    chatId,
+    responseText,
+  );
+
+
+  const replyId = bot.onReplyToMessage(chatId, question.message_id, (msg) => {
+    expenses.createList(msg.from.id, msg.text);
+    bot.sendMessage(
+      msg.chat.id,
+      `List \`${msg.text}\` created`,
+      {
+        reply_to_message_id: msg.message_id,
+        parse_mode: 'MarkdownV2'
+      }
+    )
+    clearTimeout(timeoutId)
+  });
+
+  timeoutId = setTimeout(() => {
+    bot.removeReplyListener(replyId)
+  }, 3600);
 });
 
 bot.onText(/^\s*\$?\s*(\-?[\d\,]+\.?\d*)\s(.+)/, async (msg, [,amount, description]) => {
@@ -49,6 +135,10 @@ bot.onText(/^\s*\$?\s*(\-?[\d\,]+\.?\d*)\s(.+)/, async (msg, [,amount, descripti
     bot.sendMessage(chatId, `An error ocurred \`${e}\``);
   }
 });
+
+bot.on('message', (message) => {
+  console.log('onmessage', message);
+})
 
 bot.on('edited_message', (message) => {
   console.log(message);
