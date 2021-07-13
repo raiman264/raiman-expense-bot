@@ -32,11 +32,13 @@ bot.onText(/\/(start|info)/, (msg) => {
 });
 
 bot.onText(/^\s*\$?\s*(\-?[\d\,]+\.?\d*)\s(.+)/, async (msg, [,amount, description]) => {
-  const {chat: {id: chatId}, from: { id }} = msg;
+  const {chat: {id: chatId}, from, from: { id }} = msg;
+
 
   try{
+    const list_id = await expenses.getList(from);
     const total = await expenses.add({
-      username: id,
+      list_id,
       amount: (+amount.replace(/[$,]/g, '')).toFixed(2),
       description
     });

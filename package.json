@@ -4,6 +4,9 @@
   "main": "index.js",
   "author": "braulior",
   "license": "MIT",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
   "dependencies": {
     "dotenv": "^8.2.0",
     "fetch-json": "^2.4.4",
@@ -12,5 +15,8 @@
     "node-telegram-bot-api": "^0.51.0",
     "qs": "^6.9.6",
     "telegraf": "^4.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.12"
   }
 }
