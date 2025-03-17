@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { BOT_TOKEN, DEBUG_ON } = process.env;
 
-if(!BOT_TOKEN) {
+if (!BOT_TOKEN) {
   console.log(process.env);
   throw new Error("BOT_TOKEN not defined");
 }
@@ -13,7 +13,16 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 const expenses = new Expenses();
 
+bot.getMe().then((me) => {
+  console.log('Hi my name is %s!', me.username);
+  console.log(me);
+});
+
 bot.setMyCommands([
+  {
+    command: 'add',
+    description: 'Add expense `/add $amount description`'
+  },
   {
     command: 'createlist',
     description: 'Create a new expenses list'
@@ -28,7 +37,8 @@ bot.setMyCommands([
   }
 ])
 
-bot.onText(/\/ping/, ({chat: {id: chatId}}) => {
+bot.onText(/\/ping/, ({ chat: { id: chatId } }) => {
+  console.log('ping command received');
   bot.sendMessage(chatId, 'pong');
 });
 
@@ -58,16 +68,17 @@ bot.onText(/\/createlist/i, async (msg) => {
     {
       reply_to_message_id: message_id,
       reply_markup:
-        {
-          force_reply: true,
-          input_field_placeholder: 'ex: savings'
-        }
+      {
+        force_reply: true,
+        input_field_placeholder: 'ex: savings'
+      }
     }
   );
 
 
   const replyId = bot.onReplyToMessage(chatId, question.message_id, (msg) => {
-    expenses.createList(msg.from.id, msg.text);
+    console.log('reply', msg);
+    expenses.createList(msg.chat.id, msg.text);
     bot.sendMessage(
       msg.chat.id,
       `List \`${msg.text}\` created`,
@@ -86,8 +97,8 @@ bot.onText(/\/createlist/i, async (msg) => {
 
 bot.onText(/\/lists/i, async (msg) => {
   const { message_id, chat: { id: chatId }, from } = msg;
-  const lists = await expenses.getLists(from.id);
-  let responseText = !lists.length ? "You have no expenses lists yet" : '';
+  const lists = await expenses.getLists(chatId);
+  let responseText = !lists.length ? "You have no expenses lists yet in this chat" : '';
 
   lists.forEach((list) => {
     responseText += `${list.name} ${list.is_default_list ? '\u2713' : ''}\n`;
@@ -98,34 +109,23 @@ bot.onText(/\/lists/i, async (msg) => {
     responseText,
   );
 
-
-  const replyId = bot.onReplyToMessage(chatId, question.message_id, (msg) => {
-    expenses.createList(msg.from.id, msg.text);
-    bot.sendMessage(
-      msg.chat.id,
-      `List \`${msg.text}\` created`,
-      {
-        reply_to_message_id: msg.message_id,
-        parse_mode: 'MarkdownV2'
-      }
-    )
-    clearTimeout(timeoutId)
-  });
-
-  timeoutId = setTimeout(() => {
-    bot.removeReplyListener(replyId)
-  }, 3600);
 });
 
-bot.onText(/^\s*([^\$\-\d]+\s)?\$?\s*(\-?[\d\,]+\.?\d*)\s(.+)/, async (msg, [,list, amount, description]) => {
-  const {chat: {id: chatId}, from, from: { id }} = msg;
+//  handle recieveing a message with an amount
+const expenseRegex = /^\s*([^\$\\\-\d]+\s)?\$?\s*(\-?[\d\,]+\.?\d*)\s(.+)/;
+async function handleExpenseMessage(msg, [, list, amount, description]) {
+  const { chat: { id: chatId }, from, from: { id } } = msg;
 
+  // bad patch
+  if (list && list.startsWith('/add')) {
+    return;
+  }
 
-  try{
-    const list_id = await expenses.getList(from, list);
+  try {
+    const list_id = await expenses.getList(chatId, list);
 
-    if(!list_id) {
-      return bot.sendMessage(chatId, `list *${list}* not found`, {parse_mode: 'MarkdownV2'});
+    if (!list_id) {
+      return bot.sendMessage(chatId, `list *${list}* not found`, { parse_mode: 'MarkdownV2' });
     }
 
     const total = await expenses.add({
@@ -139,9 +139,22 @@ bot.onText(/^\s*([^\$\-\d]+\s)?\$?\s*(\-?[\d\,]+\.?\d*)\s(.+)/, async (msg, [,li
     console.error(e);
     bot.sendMessage(chatId, `An error ocurred \`${e}\``);
   }
+}
+
+bot.onText(/\/add/i, (msg, match) => {
+  const { entities } = msg;
+  const botCommand = entities.find((entity) => entity.type === 'bot_command');
+
+  const messageMatches = match.input.slice(botCommand.length).trim().match(expenseRegex);
+
+  if (messageMatches) {
+    handleExpenseMessage(msg, messageMatches);
+  }
 });
 
-if(DEBUG_ON) {
+bot.onText(expenseRegex, handleExpenseMessage);
+
+if (DEBUG_ON) {
   bot.on('message', (message) => {
     console.log('onmessage', message);
   })

@@ -1,0 +1,18 @@
+
+version: '3.1'
+name: expense-bot
+services:
+  mysql:
+    image: mysql
+    container_name: expense-bot-mysql
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+      MYSQL_DATABASE: 'expenses-bot'
+      # MYSQL_USER: 'root'
+      # MYSQL_ROOT_PASSWORD: '12345678'
+    ports:
+      - "3306:3306"
+    volumes:
+      # - ./data/mysql/conf.d:/etc/mysql/conf.d
+      # - ./data/mysql/logs:/logs
+      - ./data/mysql/mysql:/var/lib/mysql
